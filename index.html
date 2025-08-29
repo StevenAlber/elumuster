@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>KAMEELEONI KALEIDOSKOOP</title>
+    <!-- p5.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --text-color: rgba(220, 220, 220, 0.8);
+            --bg-color: #0a0a0a;
+            --control-area-bg: #111111;
+            --control-bg-color: rgba(0, 0, 0, 0.4);
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            min-height: 0; /* Important for flexbox shrinking */
+            position: relative; /* For p5.js canvas positioning */
+        }
+
+        canvas {
+            display: block;
+        }
+        
+        /* --- Footer & UI Controls --- */
+        .footer-controls {
+            flex-shrink: 0; /* Prevent the footer from shrinking */
+            padding: 15px 25px;
+            box-sizing: border-box;
+            background-color: var(--control-area-bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            user-select: none;
+            gap: 15px;
+        }
+
+        .main-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px 20px;
+        }
+        
+        .hue-control-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hue-control-wrapper label {
+            font-size: 0.9rem;
+            font-weight: 300;
+        }
+
+        .clear-button {
+            background-color: var(--control-bg-color);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-color);
+            padding: 8px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        
+        .clear-button:hover, .clear-button:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+            outline: none;
+        }
+
+        .info-text-wrapper {
+            line-height: 1.5;
+        }
+        
+        .footer-title {
+            font-size: 0.95rem;
+            font-weight: 400;
+            margin: 0 0 5px 0;
+            opacity: 0.9;
+        }
+
+        .footer-tagline {
+            font-size: 0.85rem;
+            font-weight: 300;
+            margin: 0;
+            opacity: 0.7;
+        }
+
+        /* --- Custom Hue Slider Styling --- */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 150px;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            border-radius: 4px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            border: 2px solid var(--bg-color);
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+        }
+
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            border-radius: 4px;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            border: 2px solid var(--bg-color);
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+        }
+
+    </style>
+</head>
+<body>
+    <main id="canvas-container"></main>
+    
+    <footer class="footer-controls">
+        <div class="main-controls">
+             <div class="hue-control-wrapper">
+                 <label for="hue-slider">Hue</label>
+                 <input type="range" id="hue-slider" min="0" max="360" value="0">
+            </div>
+            <button id="clear-button" class="clear-button">Clear</button>
+        </div>
+        <div class="info-text-wrapper">
+            <p class="footer-title">KAMEELEONI KALEIDOSKOOP</p>
+            <p class="footer-tagline">Kui sa oled närvis, vihane või lihtsalt tüdinenud — joonista elumustreid.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Configuration ---
+        let symmetry = 8;
+        let brushSize = 5;
+        let isPaused = false;
+
+        // --- DOM Elements ---
+        let hueSlider, clearButton, canvasContainer;
+        let p5Canvas;
+        
+        /**
+         * Checks if the user is on a mobile device.
+         * @returns {boolean} True if a mobile device is detected.
+         */
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+        }
+        
+        function getCanvasHeight() {
+            return canvasContainer.elt.offsetHeight;
+        }
+        
+        function setup() {
+            canvasContainer = select('#canvas-container');
+            p5Canvas = createCanvas(canvasContainer.width, getCanvasHeight());
+            p5Canvas.parent('canvas-container');
+            
+            angleMode(DEGREES);
+            colorMode(HSB, 360, 100, 100, 100);
+            background(10, 5, 5);
+            strokeWeight(brushSize);
+            
+            // --- Connect to UI Elements ---
+            hueSlider = select('#hue-slider');
+            clearButton = select('#clear-button');
+
+            // --- UI Event Listeners ---
+            clearButton.mousePressed(clearCanvas);
+        }
+        
+        function clearCanvas() {
+            background(10, 5, 5);
+        }
+
+        function draw() {
+            if (isPaused) return;
+
+            translate(width / 2, height / 2);
+
+            let isDrawing = mouseIsPressed || (isMobileDevice() && touches.length > 0);
+
+            if (isDrawing && mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                const mx = mouseX - width / 2;
+                const my = mouseY - height / 2;
+                const pmx = pmouseX - width / 2;
+                const pmy = pmouseY - height / 2;
+
+                const angle = 360 / symmetry;
+                const currentHue = hueSlider.value();
+                
+                for (let i = 0; i < symmetry; i++) {
+                    rotate(angle);
+                    stroke(currentHue, 85, 95, 80);
+                    strokeWeight(brushSize);
+                    line(mx, my, pmx, pmy);
+
+                    // Create mirrored reflection
+                    push();
+                    scale(1, -1);
+                    line(mx, my, pmx, pmy);
+                    pop();
+                }
+            }
+        }
+
+        function keyPressed() {
+            if (isMobileDevice()) return;
+
+            if (key === ' ' || keyCode === UP_ARROW || keyCode === DOWN_ARROW) {
+                return false;
+            }
+            if (key === 's' || key === 'S') saveCanvas('KAMEELEONI_KALEIDOSKOOP_Art', 'png');
+            if (key === 'c' || key === 'C') clearCanvas();
+            if (key === ' ') {
+                isPaused = !isPaused;
+                if(isPaused) noLoop(); else loop();
+            }
+            if (key === '=' || key === '+') symmetry++;
+            if (key === '-') symmetry = max(2, symmetry - 1);
+            if (keyCode === UP_ARROW) brushSize++;
+            if (keyCode === DOWN_ARROW) brushSize = max(1, brushSize - 1);
+        }
+
+        function windowResized() {
+            resizeCanvas(canvasContainer.width, getCanvasHeight());
+            clearCanvas();
+        }
+        
+        function touchMoved() {
+            if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                 return false;
+            }
+        }
+
+    </script>
+</body>
+</html>
